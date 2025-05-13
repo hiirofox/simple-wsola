@@ -4,14 +4,19 @@
 #include <math.h>
 #include "fft.h"
 
+class ReSampler//打算用fft写
+{
+
+};
+
 class WSOLA
 {
 private:
-	constexpr static int FFTLen = 2048;//FFT长度
+	constexpr static int FFTLen = 4096;//FFT长度
 	constexpr static int MaxInBufferSize = 65536;//一定要足够大
 	constexpr static int MaxOutBufferSize = 65536;
-	constexpr static int MaxBlockSize = 1024;//块大小
-	constexpr static int MaxRange = 1024;//搜索范围
+	constexpr static int MaxBlockSize = 2048;//块大小
+	constexpr static int MaxRange = FFTLen - MaxBlockSize;//搜索范围
 	int blockSize = MaxBlockSize;
 	int hopSize = blockSize / 2;
 	int range = MaxRange;//搜索范围
@@ -53,7 +58,7 @@ private:
 	float im1[FFTLen];
 	float re2[FFTLen];
 	float im2[FFTLen];
-	int GetMaxIndex2()//找最大相关(fft) 这个是坏的，不要用
+	int GetMaxIndex2()//找最大相关(fft) 修好了
 	{
 		int len1 = range + blockSize;
 		for (int i = 0; i < len1; ++i) {
@@ -80,7 +85,7 @@ private:
 			float re1v = re1[i];
 			float im1v = im1[i];
 			float re2v = re2[i];
-			float im2v = im2[i];
+			float im2v = -im2[i];//这个得共轭
 			re1[i] = re1v * re2v - im1v * im2v;
 			im1[i] = re1v * im2v + im1v * re2v;
 		}
@@ -131,7 +136,7 @@ public:
 					copybuf[j] = inbuf[(start + j) % MaxInBufferSize];
 				}
 
-				int index = GetMaxIndex1();//找与目标块的最大相关
+				int index = GetMaxIndex2();//找与目标块的最大相关
 				int start2 = start + index + hopSize;//跳步的目标块，标准wsola实现
 				//int start2 = start + index;//不跳步的，测试一下可以实现固定音高保留共振峰
 				for (int j = 0; j < blockSize; ++j)//更新目标块

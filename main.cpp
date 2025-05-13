@@ -13,10 +13,10 @@ WSOLA wsola_r;
 
 int main()
 {
-	reader.OpenWav("D:\\Projects\\c++\\WSOLA\\Project_7.wav");
+	reader.OpenWav("D:\\Projects\\c++\\WSOLA\\[06]Explorer.wav");
 	writer.CreateWav("D:\\Projects\\c++\\WSOLA\\output.wav");
-	wsola_l.SetTimeSkretch(2);
-	wsola_r.SetTimeSkretch(2);
+	wsola_l.SetTimeSkretch(1);
+	wsola_r.SetTimeSkretch(1);
 	int count = 0;
 	while (!reader.EndOfWav())
 	{
@@ -43,7 +43,7 @@ int main()
 	}
 	memset(bufl, 0, BufLen * sizeof(float));//填充0
 	memset(bufr, 0, BufLen * sizeof(float));//排空里面的数据
-	for (int i = 0; i < 240; ++i)
+	for (int i = 0; i < 24; ++i)
 	{
 		wsola_l.ProcessIn(bufl, BufLen);
 		wsola_r.ProcessIn(bufr, BufLen);
