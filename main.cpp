@@ -13,7 +13,7 @@ WSOLA wsola_r;
 
 int main()
 {
-	reader.OpenWav("D:\\Projects\\c++\\WSOLA\\[06]Explorer.wav");
+	reader.OpenWav("D:\\Projects\\c++\\WSOLA\\Project_7.wav");
 	writer.CreateWav("D:\\Projects\\c++\\WSOLA\\output.wav");
 	wsola_l.SetTimeSkretch(2);
 	wsola_r.SetTimeSkretch(2);
