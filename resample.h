@@ -5,8 +5,8 @@ class ReSampler//又不是不能用
 private:
 	constexpr static int MaxInBufferSize = 65536;//一定要足够大
 	constexpr static int MaxOutBufferSize = 65536;
-	float rate = 1.0;//原始采样率：目标采样率
-
+	float rate = 1.0, globalRate = 1.0;//原始采样率：目标采样率
+	int isUpdata = 0;
 	float inbuf[MaxInBufferSize];
 	int pos = 0, posHop = 0;
 	float outbuf[MaxOutBufferSize];
@@ -42,18 +42,8 @@ public:
 	}
 	void SetRate(float rate)//src:dst
 	{
-		this->rate = rate;
-		float n = (float)fftlenin / rate;//输出窗长
-		hopsizeout = n / 4;
-		int m = 1 << (int)(ceilf(log2f(n)));
-		if (m != fftlenout)
-		{
-			fftlenout = m;
-			for (int i = 0; i < fftlenout; ++i)
-			{
-				windowout[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / fftlenout);
-			}
-		}
+		globalRate = rate;
+		isUpdata = 1;
 	}
 	void ProcessIn(const float* buf, int len)
 	{
@@ -158,13 +148,31 @@ public:
 				}
 				writepos += hopsizeout;
 
+				if (isUpdata)//处理完再更新
+				{
+					isUpdata = 0;
+					rate = globalRate;
+					float n = (float)fftlenin / rate;//输出窗长
+					hopsizeout = n / 4;
+					int m = 1 << (int)(ceilf(log2f(n)));
+					if (m != fftlenout)
+					{
+						fftlenout = m;
+						for (int i = 0; i < fftlenout; ++i)
+						{
+							windowout[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / fftlenout);
+						}
+					}
+				}
 			}
 			pos = (pos + 1) % MaxInBufferSize;
 		}
 	}
-	bool PrepareOut(int len)
+	int PrepareOut(int len)
 	{
-		return writepos - readpos > len + fftlenin;
+		int n = writepos - readpos - (len + fftlenin);
+		if (n < 0)return 0;
+		return n;
 	}
 	void ProcessOut(float* buf, int len)
 	{

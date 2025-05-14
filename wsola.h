@@ -8,16 +8,16 @@
 class WSOLA
 {
 private:
-	constexpr static int FFTLen = 4096;//FFT长度
+	constexpr static int FFTLen = 8192;//FFT长度
 	constexpr static int MaxInBufferSize = 65536;//一定要足够大
 	constexpr static int MaxOutBufferSize = 65536;
 	constexpr static int MaxBlockSize = 2048;//块大小
-	constexpr static int MaxRange = FFTLen - MaxBlockSize;//搜索范围
+	constexpr static int MaxRange = 2048;//搜索范围
 	int blockSize = MaxBlockSize;
-	int hopSize = blockSize / 2;
+	int hopSize = blockSize / 4;
 	int range = MaxRange;//搜索范围
 
-	float step = 1.0;//步长
+	float step = 1.0, globalStep = 1.0;//步长
 	float stepsum = 0;
 
 	float window[MaxBlockSize];
@@ -59,7 +59,7 @@ private:
 		int len1 = range + blockSize;
 		for (int i = 0; i < len1; ++i) {
 			float w = 0.5 - 0.5 * cosf(2.0 * M_PI * i / len1);
-			re1[i] = copybuf[i] * w;
+			re1[i] = copybuf[i] * w * 0.001;
 			im1[i] = 0.0f;
 		}
 		for (int i = len1; i < FFTLen; ++i) {
@@ -68,7 +68,7 @@ private:
 		}
 		for (int i = 0; i < blockSize; ++i) {
 			float w = 0.5 - 0.5 * cosf(2.0 * M_PI * i / blockSize);
-			re2[i] = globalBuf[i] * w;
+			re2[i] = globalBuf[i] * w * 0.001;
 			im2[i] = 0.0f;
 		}
 		for (int i = blockSize; i < FFTLen; ++i) {
@@ -114,9 +114,9 @@ public:
 	}
 	void SetTimeSkretch(float ratio)
 	{
-		step = ratio;
+		globalStep = ratio;
 	}
-	void ProcessIn(float* buf, int len)
+	void ProcessIn(const float* buf, int len)
 	{
 		for (int i = 0; i < len; ++i)
 		{
@@ -142,21 +142,24 @@ public:
 				}
 
 				int start3 = start + index;
+				float normv = hopSize / (blockSize / 2.0);//hop = 1/4
 				for (int j = 0, k = writepos; j < blockSize; ++j)//叠加
 				{
-					outbuf[k % MaxOutBufferSize] += copybuf[j + index] * window[j];
+					outbuf[k % MaxOutBufferSize] += copybuf[j + index] * window[j] * normv;
 					k++;
 				}
 				writepos += hopSize;
-
+				step = globalStep;//等处理完后再更新
 			}
 
 			pos = (pos + 1) % MaxInBufferSize;
 		}
 	}
-	bool PrepareOut(int len)
+	int PrepareOut(int len)
 	{
-		return writepos - readpos > len + blockSize;
+		int n = writepos - readpos - (len + blockSize);
+		if (n < 0)return 0;
+		return n;
 	}
 	void ProcessOut(float* buf, int len)
 	{
@@ -166,6 +169,64 @@ public:
 			buf[i] = outbuf[index];
 			outbuf[index] = 0;
 			readpos++;
+		}
+	}
+};
+
+class WSOLA_PitchShifter	//最终屎山
+{
+private:
+	constexpr static int MaxBufSize = 65536;
+	float buffer[MaxBufSize];
+
+	WSOLA wsola;
+	ReSampler rs;
+	float pitch = 1.0;
+public:
+	void SetPitch(float pitch)
+	{
+		this->pitch = pitch;
+		wsola.SetTimeSkretch(pitch);
+		rs.SetRate(pitch);
+	}
+	void ProcessBlock(const float* in, float* out, int numSamples)
+	{
+		if (pitch > 1.0)//这时wsola是拉长的，resample放前面
+		{
+			rs.ProcessIn(in, numSamples);
+			int len2 = rs.PrepareOut(0);
+			rs.ProcessOut(buffer, len2);//缩短
+			wsola.ProcessIn(buffer, len2);
+			if (wsola.PrepareOut(numSamples))
+			{
+				wsola.ProcessOut(out, numSamples);
+			}
+			else
+			{
+				for (int i = 0; i < numSamples; ++i)
+				{
+					out[i] = 0;
+				}
+			}
+		}
+		else //resample放后面
+		{
+			int len2 = (float)numSamples / pitch;
+			wsola.ProcessIn(in, numSamples);
+			len2 = wsola.PrepareOut(0);
+			wsola.ProcessOut(buffer, len2);
+			rs.ProcessIn(buffer, len2);
+			if (rs.PrepareOut(numSamples))
+			{
+				rs.ProcessOut(out, numSamples);
+			}
+			else
+			{
+				for (int i = 0; i < numSamples; ++i)
+				{
+					out[i] = 0;
+				}
+			}
 		}
 	}
 };
