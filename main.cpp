@@ -67,8 +67,8 @@ int main()
 
 void test2()
 {
-	rsl.SetRate(0.62);
-	rsr.SetRate(0.62);
+	rsl.SetRate(0.22);
+	rsr.SetRate(0.22);
 
 	int count = 0;
 	while (!reader.EndOfWav())

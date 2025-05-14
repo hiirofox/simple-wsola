@@ -1,6 +1,6 @@
 #pragma once
 
-class ReSampler//打算用fft写
+class ReSampler//又不是不能用
 {
 private:
 	constexpr static int MaxInBufferSize = 65536;//一定要足够大
@@ -99,35 +99,60 @@ public:
 
 				int n = (float)fftlenin / rate;//输出窗长
 
-				float y0 = 0, y1 = 0, y2 = 0, y3 = 0;
+				float y0 = 0, y1 = 0, y2 = 0, y3 = 0, y4 = 0, y5 = 0;
 				for (int j = 0, k = writepos; j < n; ++j)
 				{
-					const float p0 = 1.0 / 3.0;
-					const float p1 = 1.0 / 2.0;
-					const float p2 = 1.0 / 6.0;
 					float indexf = (float)j * fftlenout / n;
 					int index = indexf;
-					if (index < 2)
+
+					// 边界处理，确保索引有效
+					if (index < 3)
 					{
+						// 处理左边界，假设超出部分为0
 						y0 = 0;
 						y1 = 0;
-						y2 = bufre[0];
-						y3 = bufre[1];
+						y2 = 0;
+						y3 = bufre[index + 0];
+						y4 = bufre[index + 1];
+						y5 = bufre[index + 2];
+					}
+					else if (index + 3 >= fftlenout)
+					{
+						// 处理右边界
+						y0 = bufre[index - 3];
+						y1 = bufre[index - 2];
+						y2 = bufre[index - 1];
+						y3 = 0;
+						y4 = 0;
+						y5 = 0;
 					}
 					else
 					{
-						y0 = bufre[index - 2];
-						y1 = bufre[index - 1];
-						y2 = bufre[index + 0];
-						y3 = bufre[index + 1];
+						// 正常情况，取六个点
+						y0 = bufre[index - 3];
+						y1 = bufre[index - 2];
+						y2 = bufre[index - 1];
+						y3 = bufre[index + 0];
+						y4 = bufre[index + 1];
+						y5 = bufre[index + 2];
 					}
-					float c0 = y1;
-					float x = indexf - (int)indexf;
-					float c1 = y2 - p0 * y0 - p1 * y1 - p2 * y3;
-					float c2 = p1 * (y0 + y2) - y1;
-					float c3 = p2 * (y3 - y0) + p1 * (y1 - y2);
-					float out = ((c3 * x + c2) * x + c1) * x + c0;
 
+					// 计算五次Lagrange基函数
+					float t = indexf - index;
+					float t_plus_2 = t + 2;
+					float t_plus_1 = t + 1;
+					float t_minus_1 = t - 1;
+					float t_minus_2 = t - 2;
+					float t_minus_3 = t - 3;
+
+					float L0 = (t_plus_1 * t * t_minus_1 * t_minus_2 * t_minus_3) / (-120.0f);
+					float L1 = (t_plus_2 * t * t_minus_1 * t_minus_2 * t_minus_3) / 24.0f;
+					float L2 = (t_plus_2 * t_plus_1 * t_minus_1 * t_minus_2 * t_minus_3) / (-12.0f);
+					float L3 = (t_plus_2 * t_plus_1 * t * t_minus_2 * t_minus_3) / 12.0f;
+					float L4 = (t_plus_2 * t_plus_1 * t * t_minus_1 * t_minus_3) / (-24.0f);
+					float L5 = (t_plus_2 * t_plus_1 * t * t_minus_1 * t_minus_2) / 120.0f;
+
+					float out = y0 * L0 + y1 * L1 + y2 * L2 + y3 * L3 + y4 * L4 + y5 * L5;
 					outbuf[k % MaxOutBufferSize] += out * normEnergy;
 					k++;
 				}
@@ -154,29 +179,3 @@ public:
 
 };
 
-/*float rate2 = (float)fftlenout / n;
-				float t = 0;
-				float normEnergy = 1.0 / sqrtf(fftlenin * n);
-				float y0 = 0, y1 = 0, y2 = 0, y3 = 0;
-				for (int j = 0, k = writepos; j < n; ++j)
-				{
-					float in = bufre[(int)t] * windowout[(int)t] * normEnergy;
-					const float p0 = 1.0 / 3.0;
-					const float p1 = 1.0 / 2.0;
-					const float p2 = 1.0 / 6.0;
-					y0 = y1;
-					y1 = y2;
-					y2 = y3;
-					y3 = in;
-					float x = t - (int)t;
-					float c0 = y1;
-					float c1 = y2 - p0 * y0 - p1 * y1 - p2 * y3;
-					float c2 = p1 * (y0 + y2) - y1;
-					float c3 = p2 * (y3 - y0) + p1 * (y1 - y2);
-					float out = ((c3 * x + c2) * x + c1) * x + c0;
-
-					outbuf[k % MaxOutBufferSize] += out;
-					k++;
-					t += rate2;
-				}
-				writepos += hopsizeout;*/
