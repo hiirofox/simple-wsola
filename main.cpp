@@ -24,11 +24,12 @@ int main()
 {
 	reader.OpenWav("D:\\Projects\\c++\\WSOLA\\[06]Explorer.wav");
 	writer.CreateWav("D:\\Projects\\c++\\WSOLA\\output.wav");
-	//test1();
-	//test2();
-	test3();
-	return 0;
+	//test1();//time stretcher
+	//test2();//resample
+	test3();//pitch shifter
 
+	writer.SetSampleRate(48000);
+	writer.EndOfWav();
 }
 void test1()
 {
@@ -71,8 +72,6 @@ void test1()
 			writer.WriteBlock(bufl, bufr, BufLen);
 		}
 	}
-	writer.SetSampleRate(48000);
-	writer.EndOfWav();
 }
 void test2()
 {
@@ -116,14 +115,16 @@ void test2()
 			writer.WriteBlock(bufl, bufr, BufLen);
 		}
 	}
-	writer.SetSampleRate(48000);
-	writer.EndOfWav();
 }
 
 void test3()
 {
-	psl.SetPitch(1);
-	psr.SetPitch(1);
+	psl.SetPitch(4);
+	psr.SetPitch(4);
+	int bSize = 2048;
+	int sRange = 2048;
+	psl.SetBlockRange(bSize, sRange);
+	psr.SetBlockRange(bSize, sRange);
 	while (!reader.EndOfWav())
 	{
 		reader.ReadBlock(bufl, bufr, BufLen);
@@ -139,6 +140,4 @@ void test3()
 		psr.ProcessBlock(bufr, bufr, BufLen);
 		writer.WriteBlock(bufl, bufr, BufLen);
 	}
-	writer.SetSampleRate(48000);
-	writer.EndOfWav();
 }

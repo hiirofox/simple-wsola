@@ -8,7 +8,7 @@
 class WSOLA
 {
 private:
-	constexpr static int FFTLen = 8192;//FFT长度
+	constexpr static int MaxFFTLen = 16384;//FFT长度
 	constexpr static int MaxInBufferSize = 65536;//一定要足够大
 	constexpr static int MaxOutBufferSize = 65536;
 	constexpr static int MaxBlockSize = 2048;//块大小
@@ -21,6 +21,7 @@ private:
 	float stepsum = 0;
 
 	float window[MaxBlockSize];
+	float window2[MaxBlockSize + MaxRange];
 
 	float inbuf[MaxInBufferSize];
 	int pos = 0;
@@ -50,15 +51,16 @@ private:
 		//printf("index:%5d\t\tmax:%5.8f\n", index, max);
 		return index;
 	}
-	float re1[FFTLen];
-	float im1[FFTLen];
-	float re2[FFTLen];
-	float im2[FFTLen];
+	int FFTLen = 4096;
+	float re1[MaxFFTLen];
+	float im1[MaxFFTLen];
+	float re2[MaxFFTLen];
+	float im2[MaxFFTLen];
 	int GetMaxCorrIndex2()//找最大相关(fft) 修好了
 	{
 		int len1 = range + blockSize;
 		for (int i = 0; i < len1; ++i) {
-			float w = 0.5 - 0.5 * cosf(2.0 * M_PI * i / len1);
+			float w = window2[i];
 			re1[i] = copybuf[i] * w * 0.001;
 			im1[i] = 0.0f;
 		}
@@ -67,7 +69,7 @@ private:
 			im1[i] = 0.0f;
 		}
 		for (int i = 0; i < blockSize; ++i) {
-			float w = 0.5 - 0.5 * cosf(2.0 * M_PI * i / blockSize);
+			float w = window[i];
 			re2[i] = globalBuf[i] * w * 0.001;
 			im2[i] = 0.0f;
 		}
@@ -107,10 +109,23 @@ public:
 	{
 		memset(inbuf, 0, sizeof(inbuf));
 		memset(outbuf, 0, sizeof(outbuf));
+		SetBlockRange(2048, 2048);
+	}
+	void SetBlockRange(int blockSize, int searchRange)
+	{
+		if (blockSize + range > MaxFFTLen)return;
+
+		this->blockSize = blockSize;
+		this->range = searchRange;
 		for (int i = 0; i < MaxBlockSize; ++i)
 		{
 			window[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / MaxBlockSize);
 		}
+		for (int i = 0; i < blockSize + range; ++i)
+		{
+			window2[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / (blockSize + range));
+		}
+		FFTLen = 1 << (int)(ceilf(log2f(blockSize + range)));
 	}
 	void SetTimeSkretch(float ratio)
 	{
@@ -188,6 +203,10 @@ public:
 		this->pitch = pitch;
 		wsola.SetTimeSkretch(pitch);
 		rs.SetRate(pitch);
+	}
+	void SetBlockRange(int blockSize, int searchRange)
+	{
+		wsola.SetBlockRange(blockSize, searchRange);
 	}
 	void ProcessBlock(const float* in, float* out, int numSamples)
 	{
