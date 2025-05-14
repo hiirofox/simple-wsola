@@ -188,6 +188,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\fft.h" />
+    <ClInclude Include="..\resample.h" />
     <ClInclude Include="..\wav.h" />
     <ClInclude Include="..\wsola.h" />
   </ItemGroup>

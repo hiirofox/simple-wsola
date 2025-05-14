@@ -3,11 +3,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "fft.h"
-
-class ReSampler//打算用fft写
-{
-
-};
+#include "resample.h"
 
 class WSOLA
 {
@@ -21,7 +17,7 @@ private:
 	int hopSize = blockSize / 2;
 	int range = MaxRange;//搜索范围
 
-	float step = 1.0;//步长，类似pitch
+	float step = 1.0;//步长
 	float stepsum = 0;
 
 	float window[MaxBlockSize];
@@ -34,7 +30,7 @@ private:
 	float outbuf[MaxOutBufferSize];
 	int writepos = 0;//写指针
 	int readpos = 0;//读指针
-	int GetMaxIndex1()//找最大相关(传统方法)
+	int GetMaxCorrIndex1()//找最大相关(传统方法)
 	{
 		int index = 0;
 		float max = -999999;
@@ -58,7 +54,7 @@ private:
 	float im1[FFTLen];
 	float re2[FFTLen];
 	float im2[FFTLen];
-	int GetMaxIndex2()//找最大相关(fft) 修好了
+	int GetMaxCorrIndex2()//找最大相关(fft) 修好了
 	{
 		int len1 = range + blockSize;
 		for (int i = 0; i < len1; ++i) {
@@ -102,7 +98,7 @@ private:
 		printf("index:%5d\t\tmax:%5.8f\n", index, max);
 		return index;
 	}
-	int GetMaxIndex3()//纯ola
+	int GetMaxCorrIndex3()//纯ola
 	{
 		return 0;
 	}
@@ -136,7 +132,7 @@ public:
 					copybuf[j] = inbuf[(start + j) % MaxInBufferSize];
 				}
 
-				int index = GetMaxIndex2();//找与目标块的最大相关
+				int index = GetMaxCorrIndex2();//找与目标块的最大相关
 				int start2 = start + index + hopSize;//跳步的目标块，标准wsola实现
 				//int start2 = start + index;//不跳步的，测试一下可以实现固定音高保留共振峰
 				for (int j = 0; j < blockSize; ++j)//更新目标块
