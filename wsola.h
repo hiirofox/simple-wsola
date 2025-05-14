@@ -117,14 +117,15 @@ public:
 
 		this->blockSize = blockSize;
 		this->range = searchRange;
-		for (int i = 0; i < MaxBlockSize; ++i)
+		for (int i = 0; i < blockSize; ++i)
 		{
-			window[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / MaxBlockSize);
+			window[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / blockSize);
 		}
 		for (int i = 0; i < blockSize + range; ++i)
 		{
 			window2[i] = 0.5 - 0.5 * cosf(2.0 * M_PI * i / (blockSize + range));
 		}
+		hopSize = blockSize / 4;
 		FFTLen = 1 << (int)(ceilf(log2f(blockSize + range)));
 	}
 	void SetTimeSkretch(float ratio)

@@ -119,10 +119,10 @@ void test2()
 
 void test3()
 {
-	psl.SetPitch(4);
-	psr.SetPitch(4);
-	int bSize = 2048;
-	int sRange = 2048;
+	psl.SetPitch(0.5);
+	psr.SetPitch(0.5);
+	int bSize = 1024;
+	int sRange = 1024;
 	psl.SetBlockRange(bSize, sRange);
 	psr.SetBlockRange(bSize, sRange);
 	while (!reader.EndOfWav())
